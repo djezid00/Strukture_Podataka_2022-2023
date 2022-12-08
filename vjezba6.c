@@ -1,4 +1,4 @@
-hub#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,9 +36,9 @@ PozicijaA CreateArticle(char* tempImeArtikla, int  temp_kolicina, int temp_cijen
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int UnosUListuArtikala(PozicijaA head, PozicijaA newArticle);
 int InsertAfter(PozicijaA head, PozicijaA newArticle);
-void UnosUListuSortirano(PozicijaR head, PozicijaR temp);
-void IspisiRacune(PozicijaR first);
-void IspisiArtikle(PozicijaA first);
+int UnosUListuSortirano(PozicijaR head, PozicijaR temp);
+int IspisiRacune(PozicijaR first);
+int IspisiArtikle(PozicijaA first);
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -248,7 +248,7 @@ int InsertAfter(PozicijaA head, PozicijaA newArticle)
 	return EXIT_SUCCESS;
 }
 
-void UnosUListuSortirano(PozicijaR head, PozicijaR temp)
+int UnosUListuSortirano(PozicijaR head, PozicijaR temp)
 {
 	//Koristimo ovaj int kako bi rekli element je upisan, moze se zavrsiti funkcija.
 	//int Provjera = 0;
@@ -298,10 +298,12 @@ void UnosUListuSortirano(PozicijaR head, PozicijaR temp)
 	{
 		head->nextR = temp;
 	}
+	
+	return EXIT_SUCCESS;
 }
 
 
-void IspisiRacune(PozicijaR first)
+int IspisiRacune(PozicijaR first)
 {
 	while (first != NULL)
 	{
@@ -310,9 +312,11 @@ void IspisiRacune(PozicijaR first)
 		IspisiArtikle(first->headAr.nextA);
 		first = first->nextR;
 	}
+	
+	return EXIT_SUCCESS;
 }
 
-void IspisiArtikle(PozicijaA first)
+int IspisiArtikle(PozicijaA first)
 {
 	while (first != NULL)
 	{
@@ -320,4 +324,6 @@ void IspisiArtikle(PozicijaA first)
 		first = first->nextA;
 	}
 	printf("--------------------------------------\n");
+	
+	return EXIT_SUCCESS;
 }
