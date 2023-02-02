@@ -2,328 +2,381 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
 
-#define MAX_SIZE 128
-#define MAX_LINE 1024
+#define MAX_SIZE (128)
+#define MAX_LINE (1024)
+#define FILE_OPENING_ERROR (-1)
+#define ALLOCATION_ERROR (-2)
 
-struct _racun;
-struct _artikl;
-typedef struct _racun* PozicijaR;
-typedef struct _artikl* PozicijaA;
-
-typedef struct _artikl {
+struct _artikal;
+typedef struct _artikal* PositionA;
+typedef struct _artikal {
 	char imeArtikla[MAX_SIZE];
 	int kolicina;
-	int cijena;
-	PozicijaA nextA;
+	double cijena;
+	PositionA next;
+}Artikal;
 
-}Artikl;
-
-typedef struct _racun {
-	char imeRacuna[MAX_SIZE];
+struct _date;
+typedef struct _date* PositionD;
+typedef struct _date {
 	int godina;
 	int mjesec;
 	int dan;
-	PozicijaR nextR;
-	Artikl headAr;
+}Date;
 
+struct _racun;
+typedef struct _racun* PositionR;
+typedef struct _racun {
+	char imeRacuna[MAX_SIZE];
+	Artikal headA;
+	PositionD date;
+	PositionR next;
 }Racun;
 
-int CitanjeRacunaIzDatoteke(PozicijaR head, char* filename);
-PozicijaR CreateNewRacun(char* imeracuna);
-int CitanjeArtikalaIzDatoteke(PozicijaR temp);
-PozicijaA CreateArticle(char* tempImeArtikla, int  temp_kolicina, int temp_cijena);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-int UnosUListuArtikala(PozicijaA head, PozicijaA newArticle);
-int InsertAfter(PozicijaA head, PozicijaA newArticle);
-int UnosUListuSortirano(PozicijaR head, PozicijaR temp);
-int IspisiRacune(PozicijaR first);
-int IspisiArtikle(PozicijaA first);
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+int CitanjeRacuna(PositionR head, char* filename);
+PositionR CreateRacun(char* temp_ime);
+int CitanjeArtikala(PositionR temp);
+PositionA CreateArticle(char* temp_ime_artikla, int temp_kolicina, double temp_cijena);
+int SortArticle(PositionA headA, PositionA tempA);
+int InsertArticleAfter(PositionA p, PositionA tempA);
+int PrintList(PositionR first);
+int InsertRacun(PositionR head, PositionR temp);
+int SortRacuna(PositionR head, PositionR temp);
+int DateCmp(PositionD date1, PositionD date2);
+PositionD CreateDate(int dan, int mjesec, int godina);
+int IspisiArtikle(PositionA firstA);
 
-
-
+bool IsDateInsideOfRange(PositionD date, PositionD from, PositionD to);
+PositionA FindArticleByName(PositionA head, char* filter_name);
 
 int main()
 {
-	char filename[] = "racuni.txt";
-	Racun zeroth = { .nextR = NULL,.imeRacuna = {0},.dan = 0,.godina = 0,.mjesec = 0,.headAr.cijena = 0,.headAr.imeArtikla = "",.headAr.kolicina = 0,.headAr.nextA = NULL };
-	PozicijaR head = &zeroth;
+	Racun zeroth = { .imeRacuna = {0},.next = NULL,.headA.cijena = 0.0,.headA.imeArtikla = {0},.headA.kolicina = 0,.headA.next = NULL,.date = NULL };
+	PositionR head = &zeroth;
+	char filename[MAX_SIZE] = { 0 };
+	char choice = 0;
 
-	CitanjeRacunaIzDatoteke(head, filename);
-	//
-	IspisiRacune(head->nextR);
-	//
+	printf("Iz koje datoteke zelite citati racune:");
+	scanf(" %s", filename);
 
+	CitanjeRacuna(head, filename);
 
+	PrintList(head->next);
 
+	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	
+	while (1)
+	{
+		printf("\nDo you want to queery an article (Y/N)\n");
+		printf("-> ");
+		scanf(" %c",&choice);
+		choice = toupper(choice);
+		switch (choice)
+		{
+			case 'Y':
+				Querry(head);
+				break;
+			case 'N':
+				return EXIT_SUCCESS;
+		}
+		
+		
+	}
 
 	return EXIT_SUCCESS;
 }
 
 
-int CitanjeRacunaIzDatoteke(PozicijaR head, char* filename)
-{
-	PozicijaR temp = NULL;
-	FILE* fp = NULL;
-	char BUFFER[MAX_SIZE] = "";
-	char imeracuna[MAX_SIZE] = "";
 
+int CitanjeRacuna(PositionR head, char* filename)
+{
+	PositionR temp = NULL;
+	FILE* fp = NULL;
 	fp = fopen(filename, "r");
+	char temp_ime[MAX_SIZE] = { 0 };
+
 	if (!fp)
 	{
-		printf("Datoteka racuni.txt nije otvorena!\n");
-		return NULL;
+		printf("\nERROR opening file!\n");
+		return FILE_OPENING_ERROR;
 	}
 
 	while (!feof(fp))
 	{
-		fgets(BUFFER, MAX_LINE, fp);
-		if (sscanf(BUFFER, " %s", imeracuna) == 1)
+
+		if (fscanf(fp, " %s", temp_ime) == 1)
 		{
-			temp = CreateNewRacun(imeracuna);
-			CitanjeArtikalaIzDatoteke(temp);
-			//
-			UnosUListuSortirano(head, temp);
-			//
+			temp = CreateRacun(temp_ime);
+			CitanjeArtikala(temp);
+			SortRacuna(head, temp);
 		}
+
 
 	}
 
 	fclose(fp);
 
-
-
-
-
-
 	return EXIT_SUCCESS;
 }
 
-
-PozicijaR CreateNewRacun(char* imeracuna)
+PositionR CreateRacun(char* temp_ime)
 {
-	PozicijaR newRacun = NULL;
-
-	newRacun = (PozicijaR)malloc(sizeof(Racun));
-
-	if (!newRacun)
-	{
-		printf("Greska alokacije!\n");
-		return NULL;
-	}
-
-	strcpy(newRacun->imeRacuna, imeracuna);
-	newRacun->godina = 0;
-	newRacun->mjesec = 0;
-	newRacun->dan = 0;
-	newRacun->nextR = NULL;
-	strcpy(newRacun->headAr.imeArtikla, "");
-	newRacun->headAr.cijena = 0;
-	newRacun->headAr.kolicina = 0;
-	newRacun->headAr.nextA = NULL;
-
-
-
-	return newRacun;
-}
-
-
-int CitanjeArtikalaIzDatoteke(PozicijaR temp)
-{
-	PozicijaA tempA = NULL;
-	char tempImeArtikla[MAX_SIZE] = "";
-	int temp_kolicina = 0;
-	int temp_cijena = 0;
-	char BUFFER[MAX_SIZE] = "";
-	FILE* fp = NULL;
-
-	fp = fopen(temp->imeRacuna, "r");
-
-	if (!fp)
-	{
-		printf("Datoteka %s nije otvorena\n", temp->imeRacuna);
-	}
-
-	fgets(BUFFER, MAX_LINE, fp);
-	sscanf(BUFFER, " %d %d %d", &temp->godina, &temp->mjesec, &temp->dan);
-	while (!feof(fp))
-	{
-		fgets(BUFFER, MAX_LINE, fp);
-		if (sscanf(BUFFER, " %s %d %d", tempImeArtikla, &temp_kolicina, &temp_cijena) == 3)
-		{
-			tempA = CreateArticle(tempImeArtikla, temp_kolicina, temp_cijena);
-			UnosUListuArtikala(&temp->headAr, tempA);//adresa &
-		}
-
-
-	}
-	fclose(fp);
-
-
-	return EXIT_SUCCESS;
-}
-
-PozicijaA CreateArticle(char* tempImeArtikla, int  temp_kolicina, int temp_cijena)
-{
-	PozicijaA newArticle = NULL;
-
-	newArticle = (PozicijaA)malloc(sizeof(Artikl));
-
-	if (!newArticle)
-	{
-		printf("Greska alokacije aritkla\n");
-	}
-
-	strcpy(newArticle->imeArtikla, tempImeArtikla);
-	newArticle->kolicina = temp_kolicina;
-	newArticle->cijena = temp_cijena;
-	newArticle->nextA = NULL;
-
-
-
-	return newArticle;
-}
-
-///~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-int UnosUListuArtikala(PozicijaA head, PozicijaA newArticle)
-{
-	PozicijaA temp = head->nextA;
+	PositionR temp = NULL;
+	temp = (PositionR)malloc(sizeof(Racun));
 
 	if (!temp)
 	{
-		InsertAfter(head, newArticle);
+		printf("\nGreska alokacije!\n");
+		return ALLOCATION_ERROR;
 	}
 
-	else if (temp->nextA)
+	strcpy(temp->imeRacuna, temp_ime);
+	temp->next = NULL;
+
+	strcpy(temp->headA.imeArtikla, "");
+	temp->headA.cijena = 0.0;
+	temp->headA.kolicina = 0;
+	temp->headA.next = NULL;
+
+	return temp;
+}
+
+int CitanjeArtikala(PositionR temp)
+{
+	PositionA tempA = NULL;
+	char BUFFER[MAX_SIZE] = { 0 };
+
+	char filename_article[MAX_SIZE] = { 0 };
+	strcpy(filename_article, temp->imeRacuna);
+	char temp_ime_artikla[MAX_SIZE] = { 0 };
+	int temp_kolicina = 0;
+	double temp_cijena = 0.0;
+
+	int temp_dan = 0;
+	int temp_mjesec = 0;
+	int temp_godina = 0;
+
+	FILE* fp = NULL;
+	fp = fopen(filename_article, "r");
+
+
+	if (!fp)
 	{
-		if (strcmp(newArticle->imeArtikla, temp->imeArtikla) >= 0)
-		{
-			while (temp->nextA)
-			{
-				if (strcmp(newArticle->imeArtikla, temp->imeArtikla) >= 0 && strcmp(newArticle->imeArtikla, temp->nextA->imeArtikla) < 0)
-				{
-					InsertAfter(temp, newArticle);
-					return EXIT_SUCCESS;
-				}
-				temp = temp->nextA;
-			}
-			if (!temp->nextA)
-			{
-				InsertAfter(temp, newArticle);
-			}
-		}
-		else
-		{
-			InsertAfter(head, newArticle);
-		}
-
+		printf("\nFile is not opened!\n");
+		return FILE_OPENING_ERROR;
 	}
 
+	fgets(BUFFER, 1024, fp);
+	if (sscanf(BUFFER, " %d %d %d", &temp_godina, &temp_mjesec, &temp_dan) == 3);
+	temp->date = CreateDate(temp_dan, temp_mjesec, temp_godina);
 
-	else
+	while (!feof(fp))
 	{
-		if (strcmp(newArticle->imeArtikla, temp->imeArtikla) >= 0)
+		if (fscanf(fp, " %s %d %lf", temp_ime_artikla, &temp_kolicina, &temp_cijena) == 3)
 		{
-			InsertAfter(temp, newArticle);
-		}
-		else
-		{
-			InsertAfter(head, newArticle);
+			tempA = CreateArticle(temp_ime_artikla, temp_kolicina, temp_cijena);
+			SortArticle(&temp->headA, tempA);
+
 		}
 	}
 
+
+	fclose(fp);
 
 	return EXIT_SUCCESS;
 }
 
-
-
-int InsertAfter(PozicijaA head, PozicijaA newArticle)
+PositionA CreateArticle(char* temp_ime_artikla, int temp_kolicina, double temp_cijena)
 {
-	newArticle->nextA = head->nextA;
-	head->nextA = newArticle;
+	PositionA tempA = NULL;
+	tempA = (PositionA)malloc(sizeof(Artikal));
+
+	if (!tempA)
+	{
+		printf("\nAllocation ERROR!\n");
+		return ALLOCATION_ERROR;
+	}
+
+	strcpy(tempA->imeArtikla, temp_ime_artikla);
+	tempA->cijena = temp_cijena;
+	tempA->kolicina = temp_kolicina;
+	tempA->next = NULL;
+
+	return tempA;
+}
+
+
+int SortArticle(PositionA headA, PositionA tempA)
+{
+	PositionA p = headA;
+
+	while (p->next != NULL && strcmp(p->next->imeArtikla, tempA->imeArtikla) < 0)
+	{
+		p = p->next;
+	}
+
+	InsertArticleAfter(p, tempA);
 
 	return EXIT_SUCCESS;
 }
 
-int UnosUListuSortirano(PozicijaR head, PozicijaR temp)
+int InsertArticleAfter(PositionA p, PositionA tempA)
 {
-	//Koristimo ovaj int kako bi rekli element je upisan, moze se zavrsiti funkcija.
-	//int Provjera = 0;
-	PozicijaR p = head->nextR;
+	tempA->next = p->next;
+	p->next = tempA;
 
-	if (head == NULL)//&& Provjera == 0)
-	{
-		temp->nextR = head->nextR;
-		head->nextR = temp;
-	}
-	while (p != NULL) //&& Provjera == 0)
-	{
-		if (temp->godina < p->godina)
-		{
-			temp->nextR = head->nextR;
-			head->nextR = temp;
-			//Provjera++;
-		}
-		else if (temp->godina == p->godina)
-		{
-			if (temp->mjesec < p->mjesec)
-			{
-				temp->nextR = head->nextR;
-				head->nextR = temp;
-				//Provjera++;
-			}
-			else if (temp->mjesec == p->mjesec)
-			{
-				if (temp->dan < p->dan)
-				{
-					temp->nextR = head->nextR;
-					head->nextR = temp;
-					//Provjera++;
-				}
-				else if (temp->dan == p->dan)
-				{
-					temp->nextR = head->nextR;
-					head->nextR = temp;
-					//Provjera++;
-				}
-			}
-		}
-		p = p->nextR;
-		head = head->nextR;
-	}
-	if (head->nextR == NULL)//&& Provjera == 0)
-	{
-		head->nextR = temp;
-	}
-	
 	return EXIT_SUCCESS;
 }
 
-
-int IspisiRacune(PozicijaR first)
+int PrintList(PositionR first)
 {
-	while (first != NULL)
-	{
-		printf("--------------------------------------\n");
-		printf("%s %d-%d-%d\n", first->imeRacuna, first->godina, first->mjesec, first->dan);
-		IspisiArtikle(first->headAr.nextA);
-		first = first->nextR;
+	printf("--------------------------------------\n");
+	while (first != NULL) {
+
+		printf("IME RACUNA:%s %d%d%d\n", first->imeRacuna, first->date->godina, first->date->mjesec, first->date->dan);
+		IspisiArtikle(first->headA.next);
+		first = first->next;
 	}
-	
 	return EXIT_SUCCESS;
 }
 
-int IspisiArtikle(PozicijaA first)
+int IspisiArtikle(PositionA firstA)
 {
-	while (first != NULL)
+	while (firstA != NULL)
 	{
-		printf("Ime:%s \t Kolicina:%d \t Cijena:%d\n", first->imeArtikla, first->kolicina, first->cijena);
-		first = first->nextA;
+		printf("Ime:%s \t Kolicina:%d \t Cijena:%.2f\n", firstA->imeArtikla, firstA->kolicina, firstA->cijena);
+		firstA = firstA->next;
 	}
 	printf("--------------------------------------\n");
+}
+
+int InsertRacun(PositionR head, PositionR temp)
+{
+	temp->next = head->next;
+	head->next = temp;
+
+	return EXIT_SUCCESS;
+}
+
+int SortRacuna(PositionR head, PositionR temp)
+{
+	PositionR p = head;
+
+	while (p->next != NULL && DateCmp(p->next->date, temp->date) < 0)
+		p = p->next;
+	InsertRacun(p, temp);
+
+	return EXIT_SUCCESS;
+}
+
+int DateCmp(PositionD date1, PositionD date2)
+{
+	int result = date1->godina - date2->godina;
+
+	if (result == 0)
+	{
+		result = date1->mjesec - date2->mjesec;
+
+		if (result == 0)
+		{
+			result = date1->dan - date2->dan;
+		}
+	}
+
+
+	return result;
+}
+
+PositionD CreateDate(int dan, int mjesec, int godina)
+{
+	PositionD newDate = NULL;
+
+	newDate = (PositionD)malloc(sizeof(Date));
+
+	if (!newDate)
+	{
+		printf("\nAllocation ERROR!\n");
+		return ALLOCATION_ERROR;
+	}
+	newDate->dan = dan;
+	newDate->mjesec = mjesec;
+	newDate->godina = godina;
+
+	return newDate;
+}
+
+
+int Querry(PositionR head)
+{
+
+	PositionR datum_racuna = head->next;
+	PositionA article = &head->headA;
+	PositionD from = NULL;
+	PositionD to = NULL;
+	int temp_godina = 0;
+	int temp_mjesec = 0;
+	int temp_dan = 0;
+	char filter_name[MAX_SIZE] = { 0 };
+	int totalCount = 0;
+	float totalPrice = 0.0;
+
+
+	printf("\nInsert beggining date in format: <YEAR>-<MONTH>-<DAY>:");
+	scanf(" %d %d %d", &temp_godina, &temp_mjesec, &temp_dan);
+	from = CreateDate(temp_dan, temp_mjesec, temp_godina);
+
 	
+	printf("\nInsert end date in format: <YEAR>-<MONTH>-<DAY>:");
+	scanf(" %d %d %d", &temp_godina, &temp_mjesec, &temp_dan);
+	to = CreateDate(temp_dan, temp_mjesec, temp_godina);
+
+
+	printf("\nUnesite ime artikla:");
+	scanf(" %s", filter_name);
+
+
+	for (datum_racuna; datum_racuna != NULL; datum_racuna = datum_racuna->next)
+	{
+		if (IsDateInsideOfRange(datum_racuna->date, from, to))
+		{
+
+			PositionA article = FindArticleByName(&datum_racuna->headA, filter_name);
+
+			if (article) {
+				printf("\r\n");
+				totalCount += article->kolicina;
+				totalPrice += article->kolicina * article->cijena;
+			}
+
+		}
+
+	}
+	
+	printf("Cijena:%.2lf\nKolicina:%d", totalPrice, totalCount);
+
+	return EXIT_SUCCESS;
+}
+
+
+bool IsDateInsideOfRange(PositionD date, PositionD from, PositionD to)
+{
+	return DateCmp(date, from) >= 0 && DateCmp(date, to) <= 0;
+}
+
+PositionA FindArticleByName(PositionA head, char* filter_name)
+{
+	PositionA target = head->next;
+
+	while (target != NULL)
+	{
+		if (strcmp(target->imeArtikla, filter_name) == 0)
+			return target;
+		target = target->next;
+	}
+
 	return EXIT_SUCCESS;
 }
