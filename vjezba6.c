@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <time.h>
 
 #define MAX_SIZE (128)
 #define MAX_LINE (1024)
@@ -53,12 +54,17 @@ int IspisiArtikle(PositionA firstA);
 bool IsDateInsideOfRange(PositionD date, PositionD from, PositionD to);
 PositionA FindArticleByName(PositionA head, char* filter_name);
 
+int Deallocation(PositionR head);
+int Delete_Article(PositionA headA);
+int Delete_Racun(PositionR head);
+
 int main()
 {
 	Racun zeroth = { .imeRacuna = {0},.next = NULL,.headA.cijena = 0.0,.headA.imeArtikla = {0},.headA.kolicina = 0,.headA.next = NULL,.date = NULL };
 	PositionR head = &zeroth;
 	char filename[MAX_SIZE] = { 0 };
 	char choice = 0;
+	int status = rand();
 
 	printf("Iz koje datoteke zelite citati racune:");
 	scanf(" %s", filename);
@@ -81,13 +87,20 @@ int main()
 				Querry(head);
 				break;
 			case 'N':
+				status = Deallocation(head);
+				if (0 == status)
+					printf("\nDeallocaton successful!\n");
+				else
+					printf("\nDeallocaton ERROR!\n");
 				return EXIT_SUCCESS;
+				
 		}
 		
 		
 	}
 
-	return EXIT_SUCCESS;
+	
+
 }
 
 
@@ -377,6 +390,55 @@ PositionA FindArticleByName(PositionA head, char* filter_name)
 			return target;
 		target = target->next;
 	}
+
+	return EXIT_SUCCESS;
+}
+
+int Deallocation(PositionR head)
+{
+	PositionR tempR = head;
+	PositionA tempA = &head->next->headA;
+	while (tempR->next!=NULL)
+	{
+		
+		Delete_Article(&tempR->next->headA);
+		Delete_Racun(tempR);
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int Delete_Article(PositionA headA)
+{
+	PositionA temp1 = headA->next;
+	PositionA temp2 = NULL;
+
+	while (temp1!=NULL)
+	{
+		temp2 = temp1->next;
+		if (temp2 != NULL) {
+			temp1->next = temp2->next;
+			free(temp2);
+		}
+		else {
+			free(temp1);
+			break;
+		}
+	}
+
+
+
+	return EXIT_SUCCESS;
+}
+
+int Delete_Racun(PositionR head)
+{
+	PositionR temp1 = head;
+	PositionR temp2 = NULL;
+
+		temp2 = temp1->next;
+		temp1->next = temp2->next;
+		free(temp2);
 
 	return EXIT_SUCCESS;
 }
